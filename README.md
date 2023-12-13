@@ -1,53 +1,142 @@
-PREREQUISIITE -  Create a repo in aws ECR with name - > django-app 
+Public key is used here as we during ecs launch configuration we are putting user data with ec2 launch for showing some django template page.
+so key is used to connect to this ec2 instance that is going to be created.
+It can run without key as other projects but did not try without key.
+Policies are attached to ECS just like they were attached to EKS earlier.
 
-IMPORTANT - Once the repo is create change the 600735812827.dkr.ecr.us-west-1.amazonaws.com IN COMMANDS TO THE REPO OF YOURS
+Repo Used:
 
-1) Change the docker_image_url_django in VARIABLES.TF file with <YOUR ECR REPO URL>
+https://github.com/abhigit84/Terraform-Infra-Creation-and-Python-Application-Deployment-on-ECS-using-ECR.git
 
-2) Change the policy file paths in iam.tf and variables.tf file
+Region-us-west-1
 
-3) aws ecr get-login-password --region us-west-1 | docker login --username AWS --password-stdin <YOUR ECR REPO URL>
+PreRequisites Installations:-
 
-4) cd app/
+a)Install Terraform(ubuntu Linux):-
 
-5) docker build -t <YOUR ECR REPO URL>/django-app:latest .
+sudo apt-get update && sudo apt-get install -y gnupg software-properties-common
 
-6) docker build --platform=linux/amd64 -t 240910715551.dkr.ecr.us-west-1.amazonaws.com/django-app:latest .
+wget -O- https://apt.releases.hashicorp.com/gpg | \
+gpg --dearmor | \
+sudo tee /usr/share/keyrings/hashicorp-archive-keyring.gpg
 
-
-6)docker push 240910715551.dkr.ecr.us-west-1.amazonaws.com/django-app:latest
-
-7) Go to terraform folder and hit this below command 
-
-ssh-keygen -f california-region-key-pair
-
-
-terraform init 
-
-
-terraform plan -out terraform.out
+gpg --no-default-keyring \
+--keyring /usr/share/keyrings/hashicorp-archive-keyring.gpg \
+--fingerprint
 
 
-terraform apply "terraform.out"
+echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] \
+https://apt.releases.hashicorp.com $(lsb_release -cs) main" | \
+sudo tee /etc/apt/sources.list.d/hashicorp.list
+
+sudo apt update
+
+sudo apt-get install terraform
+
+b)AWSCLI
+
+
+sudo apt install unzip
+
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+unzip awscliv2.zip
+sudo ./aws/install
 
 
 
-8) pip install boto3 click
+c)AWS Configure
+
+Create role-admin access-update ec2 or create user-admin access-aws configure(secret key/access key/region/table)
 
 
-9) export AWS_ACCESS_KEY_ID="" 
+d)Install Docker
+
+##Install in Amazon Ubuntu
+#!/bin/bash
+sudo apt update -y
+
+sudo apt install apt-transport-https ca-certificates curl software-properties-common -y
+
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+
+sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu bionic stable" -y
+
+sudo apt update -y
+
+apt-cache policy docker-ce -y
+
+sudo apt install docker-ce -y
+
+#sudo systemctl status docker
+
+sudo chmod 777 /var/run/docker.sock
 
 
-10) export AWS_SECRET_ACCESS_KEY="" 
+1)Go to ECR:-
+Private-name-django-app-Create Repository
+
+2)git clone  https://github.com/abhigit84/Terraform-Infra-Creation-and-Python-Application-Deployment-on-ECS-using-ECR.git
+
+3)Go to terraform folder and change the ECR URL to yours ECR url created above:-
+
+cd terraform
+
+variable "docker_image_url_django" {
+  description = "Docker image to run in the ECS cluster"
+  default     = "027183218661.dkr.ecr.us-west-1.amazonaws.com/django-app"
+}
+
+4)Change the Policies file path in iam.tf(as per your policies path in aws console)  
 
 
-11) export AWS_DEFAULT_REGION="us-west-1" 
+My Policy Path:/home/ubuntu/Terraform_withcontainers/terraform/policies
 
 
-12 ) cd deploy folder 
-
-Run command in deploy folder - python3 update-ecs.py --cluster=production-cluster --service=production-service
+5)Login in ECR by hitting command (027183218661.dkr.ecr.us-west-1.amazonaws.com/django-app is ecr url,docker login as it is based on docker images so just remember)
 
 
-13 ) terraform destroy
+aws ecr get-login-password --region us-west-1 | docker login --username AWS --password-stdin 027183218661.dkr.ecr.us-west-1.amazonaws.com/django-app
 
+
+6)Build docker image after going in app folder of repo from Dockerfile which is there here(--platform=linux/amd64 basically from this os install python on top of it and 027183218661.dkr.ecr.us-west-1.amazonaws.com/django-app:latest is ecr url)
+
+cd Terraform_withcontainers
+
+cd app/
+
+docker build --platform=linux/amd64 -t 027183218661.dkr.ecr.us-west-1.amazonaws.com/django-app:latest .
+
+docker images--u can see
+
+7)Push The image to ECR(027183218661.dkr.ecr.us-west-1.amazonaws.com/django-app is ECR url,make sure this same url is updated in variables.tf also)
+
+docker push 027183218661.dkr.ecr.us-west-1.amazonaws.com/django-app:latest
+
+8)Generate key pair and update public key path in variables.tf
+
+cd terraform
+
+ssh-keygen
+copy path(/home/ubuntu/.ssh/id_rsa.pub)
+
+update in variables.tf key path
+
+9)hit the terraform commands
+
+terraform init
+
+terraform plan -out "file.plan"
+
+terraform apply
+
+change av zone us-west-1a and not us-west-1c(check these av zones available in subnets as per ur region)
+
+take lb dns-production-alb-395086828.us-west-1.elb.amazonaws.com and hit in browser..you will see django app up.
+
+you can see target groups in lb are 2 ec2 instances that got created thru ecs.
+you can see vpc,subnet,ig,natgw,route table,ecs all created in aws
+ECS-all must be running
+in ecs you can click tasks-1 task and see configuration-image uri which will be same as ecr url.
+
+10)See cloudwatch-log groups-log streams-all logs u can see here
+
+terraform destroy
